@@ -1,0 +1,37 @@
+pastebin clone REST backend endpoints:
+
+1. POST /api/new
+
+User sends pastebin, privacy level (public or unlisted) and expiration time in JSON format.
+Server returns ID of created paste, or an error (i.e. out of space, expiration time too long, etc).
+
+2. GET /api/paste/ID
+
+Gets text of paste, author, when it will expire, last edit timestamp. May return 404 if expired or never existed.
+
+3. POST /api/paste/ID
+
+Updates paste text. Must be author of paste to edit it.
+
+4. DELETE /api/paste/ID
+
+Deletes paste as if expired. Must be author.
+
+5. GET /api/public
+
+Gets list of public pastes.
+
+6. GET /api/public/USER
+
+Gets list of public pastes by a specific user.
+
+7. POST /api/new_user
+
+Creates a new user account with specified username and password. Must have an invite code created by admin (TBD) to prevent bots.
+
+8. POST /api/auth/USERNAME
+
+Returns session token if sent password is correct.
+
+Session tokens are sent in an authentication header in all requests which require authentication. The server may return an error if the token is expired or unknown. The frontend must obtain a new token by asking the user to enter their password again if the token is expired.
+

@@ -1,0 +1,5 @@
+db.sqlite
+db.test.sqlite
+.DS_Store
+node_modules
+.idea

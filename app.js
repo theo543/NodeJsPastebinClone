@@ -25,6 +25,7 @@ const jwtMiddleware = (req, res, next) => {
         const decodedPayload = jwt.verify(token, JWT_SECRET);
         console.log('decodedPayload', decodedPayload);
         req.user_id = decodedPayload.user_id;
+        req.isAdmin = decodedPayload.isAdmin;
         next();
     } catch(e) {
         console.log("Invalid Token", e);

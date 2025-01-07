@@ -4,6 +4,7 @@ import updateUserMutation from '../mutations/updateUserMutation.js';
 import deleteUserMutation from '../mutations/deleteUserMutation.js';
 import loginMutation from '../mutations/loginMutation.js';
 import createPostMutation from '../mutations/createPostMutation.js';
+import createInviteMutation from '../mutations/createInviteMutation.js';
 
 // Define the Query type
 const queryType = new graphql.GraphQLObjectType({
@@ -14,6 +15,7 @@ const queryType = new graphql.GraphQLObjectType({
         deleteUser: deleteUserMutation,
         login: loginMutation,
         createPost: createPostMutation,
+        createInvite: createInviteMutation
     }
 });
 

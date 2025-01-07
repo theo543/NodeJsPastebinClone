@@ -5,6 +5,7 @@ import path from 'path';
 import Sequelize from 'sequelize';
 import process from 'process';
 import config from '../config/config.js';
+import url from 'url';
 
 const env = process.env.NODE_ENV || 'development';
 
@@ -27,7 +28,7 @@ const models = await Promise.all(fs
     );
   })
   .map(async file => {
-    const module = await import(path.join(import.meta.dirname, file));
+    const module = await import(url.pathToFileURL(path.join(import.meta.dirname, file)));
     return module.default(sequelize, Sequelize.DataTypes);
   })
 );

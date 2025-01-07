@@ -14,7 +14,8 @@ export default (sequelize, DataTypes) => {
   }
   User.init({
     name: DataTypes.STRING,
-    password: DataTypes.STRING
+    password: DataTypes.STRING,
+    isAdmin: DataTypes.BOOLEAN,
   }, {
     sequelize,
     modelName: 'User',

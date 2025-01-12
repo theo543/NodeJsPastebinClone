@@ -4,7 +4,9 @@ import { Model } from 'sequelize';
 export default (sequelize, DataTypes) => {
   class Language extends Model {
     static associate(models) {
-      // TBA
+      Language.belongsToMany(models.Paste, {
+        through: models.PasteLanguage
+      });
     }
   }
   Language.init({

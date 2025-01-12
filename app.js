@@ -45,6 +45,7 @@ app.all(
         context: (req) => {
             return {
                 user_id: req.raw.user_id,
+                isAdmin: req.raw.isAdmin,
             }
         }
     })

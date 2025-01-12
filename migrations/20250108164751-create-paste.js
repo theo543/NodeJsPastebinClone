@@ -20,6 +20,10 @@ module.exports = {
       expiration_time: {
         type: Sequelize.DATE
       },
+      body: {
+        allowNull: false,
+        type: Sequelize.STRING
+      },
       user_id:{
         allowNull: false,
         references: {
@@ -31,7 +35,13 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       language_id: {
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
+        references: {
+          model: {
+            tableName: 'Languages',
+          },
+          key: 'id',
+        },
       },
       createdAt: {
         allowNull: false,

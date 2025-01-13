@@ -8,7 +8,7 @@ const pasteInputType = new GraphQLInputObjectType({
         expiration_time: { type: GraphQLString },
         name: { type: GraphQLString },
         body: { type: GraphQLString },
-        language_id: { type: GraphQLInt }
+        languageId: { type: GraphQLInt }
     }
 });
 

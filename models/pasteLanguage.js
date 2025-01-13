@@ -9,8 +9,8 @@ export default (sequelize, DataTypes) => {
     }
   }
   PasteLanguage.init({
-    paste_id: DataTypes.INTEGER,
-    language_id: DataTypes.INTEGER,
+    pasteId: DataTypes.INTEGER,
+    languageId: DataTypes.INTEGER,
   }, {
     sequelize,
     modelName: 'PasteLanguage',

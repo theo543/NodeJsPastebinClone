@@ -7,6 +7,8 @@ import createPostMutation from '../mutations/createPostMutation.js';
 import createInviteMutation from '../mutations/createInviteMutation.js';
 import createPasteMutation from '../mutations/createPasteMutation.js';
 import createLanguageMutation from '../mutations/createLanguageMutation.js';
+import updatePasteMutation from '../mutations/updatePasteMutation.js';
+import deletePasteMutation from '../mutations/deletePasteMutation.js';
 
 // Define the Query type
 const queryType = new graphql.GraphQLObjectType({
@@ -20,6 +22,8 @@ const queryType = new graphql.GraphQLObjectType({
         createInvite: createInviteMutation,
         createPaste: createPasteMutation,
         createLanguage: createLanguageMutation,
+        updatePaste: updatePasteMutation,
+        deletePaste: deletePasteMutation,
     }
 });
 

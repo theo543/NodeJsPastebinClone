@@ -7,8 +7,8 @@ export const createPaste = async (paste, context) => {
         body: paste.body,
         privacy_level: paste.privacy_level,
         expiration_time: new Date(paste.expiration_time),
-        user_id: context.user_id,
-        language_id: (paste.language_id || null),
+        userId: context.user_id,
+        languageId: (paste.languageId || null),
      });
 
      console.log(new Date(paste.expiration_time));

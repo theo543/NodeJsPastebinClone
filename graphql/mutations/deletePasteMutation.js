@@ -3,9 +3,7 @@ import pasteType from '../types/pasteType.js';
 import { GraphQLBoolean, GraphQLInt } from 'graphql';
 
 const deletePasteMutationResolver = async (_, args, context) => {
-    const isAuthorized = !!context.user_id && (context.isAdmin);
-   
-    if(!isAuthorized) {
+    if(!context.user_id) {
         return false;
     }
 
@@ -15,8 +13,10 @@ const deletePasteMutationResolver = async (_, args, context) => {
         }
     })
 
-    console.log(paste.body + ' ' + paste.userId + ' ' + context.user_id);
-    if(!paste || paste.userId != context.user_id) return false;
+    if(!paste || (paste.userId != context.user_id && !context.isAdmin)) {
+        console.log("You cannot delete a paste that is not yours");
+        return false;
+    }
 
     await paste.destroy();
 

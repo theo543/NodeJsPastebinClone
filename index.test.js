@@ -57,6 +57,8 @@ server = createServer(app);
 let admin;
 let user1;
 let user2;
+let textId;
+let jsId;
 
 async function createUser(name) {
     const invite = (await queryGraphql("mutation { createInvite }", admin.token)).body.data.createInvite;
@@ -69,8 +71,14 @@ async function createUser(name) {
 
 // Start the server before tests, and stop it after
 before(async () => {
-    // clear users table to remove any leftovers from previous tests
+    // clear tables to remove any leftovers from previous tests
+    await db.Invite.destroy({ where: {} });
+    await db.Paste.destroy({ where: {} });
     await db.User.destroy({ where: {} });
+    await db.Language.destroy({ where: {} });
+
+    textId = (await db.Language.create({ name: 'Text' })).id;
+    jsId = (await db.Language.create({ name: 'JavaScript' })).id;
 
     server.listen(PORT); // Start the server before tests
     const adminId = (await createUserService('admin', 'admin', true)).id;
@@ -177,6 +185,49 @@ describe("Authorization", () => {
     assert.deepEqual(resUpdate.body.data.updateUser, { id: user.id, name: 'new name' });
     const resDelete = await queryGraphql(`mutation DeleteUser { deleteUser(id: ${user.id}) }`, admin.token);
     assert.ok(resDelete.body.data.deleteUser);
+  });
+});
+
+async function createPaste(name, body, privacy_level, expiration_time, languageId, token, assertGood = true) {
+  const res = await queryGraphql(`mutation CreatePaste { createPaste(paste: {name: "${name}", body: "${body}", privacy_level: ${privacy_level}, expiration_time: "${expiration_time}", languageId: ${languageId}}) { id, name, body, privacy_level, expiration_time, language { id, name } } }`, token);
+  if(assertGood) {
+    assert.ok(res.body.data.createPaste.id);
+  }
+  return res.body.data.createPaste;
+}
+
+async function genericPasteWithDate(token) {
+  const date = `${Date.now() + 1000 * 60 * 60 * 24 * 7}`;
+  return [date, await createPaste('test paste', 'test body', 'PUBLIC', date, textId, token)];
+}
+
+async function genericPaste(token) {
+  return (await genericPasteWithDate(token))[1];
+}
+
+describe("Paste management", () => {
+  test('Can create, query, update, and delete paste', async () => {
+    const [date, paste] = await genericPasteWithDate(user1.token);
+    assert.deepEqual(paste, { id: paste.id, name: 'test paste', body: 'test body', privacy_level: 'PUBLIC', expiration_time: date, language: { id: textId, name: 'Text' } });
+    const resQuery = await queryGraphql(`{ paste(id: ${paste.id}) { id, name, body, privacy_level, expiration_time, language { id, name } } }`);
+    assert.deepEqual(resQuery.body.data.paste, { id: paste.id, name: 'test paste', body: 'test body', privacy_level: 'PUBLIC', expiration_time: date, language: { id: textId, name: 'Text' } });
+    const resUpdate = await queryGraphql(`mutation UpdatePaste { updatePaste(pasteId: ${paste.id}, paste: {name: "new name", body: "new body", privacy_level: PRIVATE, expiration_time: "${date}", languageId: ${jsId}}) { id, name, body, privacy_level, expiration_time, language { id, name } } }`, user1.token);
+    assert.deepEqual(resUpdate.body.data.updatePaste, { id: paste.id, name: 'new name', body: 'new body', privacy_level: 'PRIVATE', expiration_time: date, language: { id: jsId, name: 'JavaScript' } });
+    const resDelete = await queryGraphql(`mutation DeletePaste { deletePaste(pasteId: ${paste.id}) }`, user1.token);
+    assert.ok(resDelete.body.data.deletePaste);
+    const badQuery = await queryGraphql(`{ paste(id: ${paste.id}) { id, name } }`);
+    assert.strictEqual(badQuery.body.data.paste, null);
+  });
+  test('Cannot update or delete other users pastes unless admin', async () => {
+    const paste = await genericPaste(user1.token);
+    const badUpdate = await queryGraphql(`mutation UpdatePaste { updatePaste(pasteId: ${paste.id}, paste: {name: "new name", body: "new body", privacy_level: PRIVATE, expiration_time: "${Date.now() + 1000 * 60 * 60 * 24 * 7}", languageId: ${jsId}}) { id, name, body, privacy_level, expiration_time, language { id, name } } }`, user2.token);
+    assert.deepEqual(badUpdate.body.data.updatePaste, { id: null, name: null, body: null, privacy_level: null, expiration_time: null, language: null });
+    const badDelete = await queryGraphql(`mutation DeletePaste { deletePaste(pasteId: ${paste.id}) }`, user2.token);
+    assert.strictEqual(badDelete.body.data.deletePaste, false);
+    const goodUpdate = await queryGraphql(`mutation UpdatePaste { updatePaste(pasteId: ${paste.id}, paste: {name: "new name", body: "new body", privacy_level: PRIVATE, expiration_time: "${Date.now() + 1000 * 60 * 60 * 24 * 7}", languageId: ${jsId}}) { id, name, body, privacy_level, expiration_time, language { id, name } } }`, admin.token);
+    assert.ok(goodUpdate.body.data.updatePaste.id);
+    const goodDelete = await queryGraphql(`mutation DeletePaste { deletePaste(pasteId: ${paste.id}) }`, admin.token);
+    assert.ok(goodDelete.body.data.deletePaste);
   });
 });
 

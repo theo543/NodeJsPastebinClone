@@ -16,10 +16,11 @@ const updatePasteMutationResolver = async (_, args, context) => {
     })
 
     if(!paste) return false;
-    if(paste.userId != context.user_id) {
+    if(paste.userId != context.user_id && !context.isAdmin) {
         console.log("You cannot modify a paste that is not yours");
         return false;
     }
+    args.paste.expiration_time = new Date(parseInt(args.paste.expiration_time));
     const updatedPaste = await paste.update({
         ...args.paste,
     });

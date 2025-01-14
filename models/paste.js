@@ -8,6 +8,7 @@ export default (sequelize, DataTypes) => {
       });
       Paste.hasOne(models.Language, {
         foreignKey: 'id',
+        sourceKey: 'languageId',
       });
     }
   }

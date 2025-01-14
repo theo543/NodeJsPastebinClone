@@ -3,10 +3,9 @@ import db from '../../models/index.js';
 import userType from '../types/userType.js';
 import bcrypt from 'bcrypt';
 import { GraphQLString } from 'graphql';
+import createUserService from '../../core/services/createUserService.js';
 
 const createUserMutationResolver = async (_, { inviteToken, user }, context) => {
-    const password = await bcrypt.hash(user.password, 5);
-
     const invite = await db.Invite.findOne({
         where: {
             code: inviteToken,
@@ -19,13 +18,7 @@ const createUserMutationResolver = async (_, { inviteToken, user }, context) => 
 
     await invite.destroy();
 
-    const createdUser = await db.User.create({
-        name: user.name,
-        password: password,
-    });
-
-    return createdUser;
-    
+    return await createUserService(user.name, user.password);
 }
 
 const createUserMutation = {

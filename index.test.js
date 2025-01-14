@@ -102,66 +102,57 @@ describe('Find users', () => {
   });
 });
 
-describe('E2 - List users', () => {
+describe('List users', () => {
   test('should list all users', async () => {
-      const res = await queryGraphql({ query: '{ users {id, name} }' });
+      const res = await queryGraphql('{ users { id, name } }');
 
       assert.strictEqual(res.statusCode, 200);
-      assert.strictEqual(res.body.data.users.length, 2);
-      assert.strictEqual(res.body.data.users[0].name, 'John');
-      assert.strictEqual(res.body.data.users[1].name, 'Mary');
-  });
+      assert.strictEqual(res.body.data.users.length, 3);
+      for (const user of [admin, user1, user2]) {
+        assert.ok(res.body.data.users.find(u => u.id === user.id && u.name === user.name));
+      }
+    });
 });
 
-describe('E3 - create user', () => {
-  test('should create a new user', async () => {
-      const res = await queryGraphql({ query: `mutation CreateUser { createUser(user: {name: "Example"}) }` });
+describe('User management', () => {
+  test('should create, update, and delete a new user', async () => {
+      const invite = (await queryGraphql("mutation { createInvite }", admin.token)).body.data.createInvite;
+      const user = (await queryGraphql(`mutation CreateUser { createUser(user: { name: "Example", password: "Example" }, inviteToken: "${invite}") { id, name } }`, admin.token)).body.data.createUser;
 
-      assert.strictEqual(res.statusCode, 200);
-      console.log('test:body', res.body);
+      const resList = await queryGraphql('{ users {id, name} }');
+      assert.strictEqual(resList.body.data.users.length, 4);
+      assert.strictEqual(resList.body.data.users[3].name, 'Example');
 
-      const resList = await queryGraphql({ query: '{ users {id, name} }' });
-      assert.strictEqual(resList.body.data.users.length, 3);
-      assert.strictEqual(resList.body.data.users[2].name, 'Example');
-  });
-});
+      const resUpdate = await queryGraphql(`mutation UpdateUser { updateUser(id: ${user.id}, user: {name: "Example2"}) {id, name} }`);
+      assert.strictEqual(resUpdate.body.data.updateUser.name, 'Example2');
 
-describe('E4 - update user', () => {
-  test('should update an existing user', async () => {
-      const res = await queryGraphql({ query: `mutation UpdateUser { updateUser(id: 1, user: {name: "Jean"}) {id, name} }` });
+      const resQuery = await queryGraphql(`{ user(id: ${user.id}) { id, name } }`);
+      assert.strictEqual(resQuery.body.data.user.name, 'Example2');
 
-      assert.strictEqual(res.statusCode, 200);
-      assert.strictEqual(res.body.data.updateUser.name, 'Jean');
+      const token = (await queryGraphql(`mutation { login(credentials: {username: "Example2", password: "Example"}) { token } }`)).body.data.login.token;
+      assert.ok(token);
+
+      // new user should not be able to create invites
+      const badInvite = (await queryGraphql("mutation { createInvite }", token)).body.data.createInvite;
+      assert.strictEqual(badInvite, "false");
+
+      const resDelete = await queryGraphql(`mutation DeleteUser { deleteUser(id: ${user.id}) }`, token);
+      assert.ok(resDelete.body.data.deleteUser);
+
+      const badQuery = await queryGraphql(`{ user(id: ${user.id}) { id, name } }`);
+      assert.strictEqual(badQuery.body.data.user, null);
   });
 
   test('should not update an non-existing user', async () => {
-    const res = await queryGraphql({ query: `mutation UpdateUser { updateUser(id: 999, user: {name: "Jean"}) {id, name} }` });
-
-    assert.strictEqual(res.statusCode, 200);
-    assert.strictEqual(res.body.data.updateUser, null);
-});
-});
-
-describe('E5 - delete user', () => {
-  test('should delete an existing user', async () => {
-      const res = await queryGraphql({ query: `mutation DeleteUser { deleteUser(id: 1) }` });
-
-      assert.strictEqual(res.statusCode, 200);
-
-      const resList = await queryGraphql({ query: '{ users {id, name} }' });
-      assert.notStrictEqual(resList.body.data.users[0].name, 'Jean');
-      assert.notStrictEqual(resList.body.data.users[0].name, 'John');
+    const res = await queryGraphql(`mutation UpdateUser { updateUser(id: 999, user: {name: "Jean"}) {id, name} }`);
+    assert.deepEqual(res.body.data.updateUser, { id: null, name: null });
   });
 
   test('should not delete an non-existing user', async () => {
-    const res = await queryGraphql({ query: `mutation DeleteUser { deleteUser(id: 9999) }` });
-
-    assert.strictEqual(res.statusCode, 200);
-    assert.strictEqual(res.body.data.deleteUser, null);
+    const res = await queryGraphql(`mutation DeleteUser { deleteUser(id: 9999) }`);
+    assert.strictEqual(res.body.data.deleteUser, false);
+  });
 });
-});
-
-
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);

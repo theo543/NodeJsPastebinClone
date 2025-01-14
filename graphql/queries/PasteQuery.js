@@ -13,6 +13,8 @@ const pasteQueryResolver = async (_, { id }) => {
         return null;
     }
 
+    await paste.increment('visits', { by: 1 });
+
     return paste;
 }
 

@@ -123,14 +123,14 @@ describe('User management', () => {
       assert.strictEqual(resList.body.data.users.length, 4);
       assert.strictEqual(resList.body.data.users[3].name, 'Example');
 
-      const resUpdate = await queryGraphql(`mutation UpdateUser { updateUser(id: ${user.id}, user: {name: "Example2"}) {id, name} }`);
+      const token = (await queryGraphql(`mutation { login(credentials: {username: "Example", password: "Example"}) { token } }`)).body.data.login.token;
+      assert.ok(token);
+
+      const resUpdate = await queryGraphql(`mutation UpdateUser { updateUser(id: ${user.id}, user: {name: "Example2"}) {id, name} }`, token);
       assert.strictEqual(resUpdate.body.data.updateUser.name, 'Example2');
 
       const resQuery = await queryGraphql(`{ user(id: ${user.id}) { id, name } }`);
       assert.strictEqual(resQuery.body.data.user.name, 'Example2');
-
-      const token = (await queryGraphql(`mutation { login(credentials: {username: "Example2", password: "Example"}) { token } }`)).body.data.login.token;
-      assert.ok(token);
 
       // new user should not be able to create invites
       const badInvite = (await queryGraphql("mutation { createInvite }", token)).body.data.createInvite;
@@ -151,6 +151,32 @@ describe('User management', () => {
   test('should not delete an non-existing user', async () => {
     const res = await queryGraphql(`mutation DeleteUser { deleteUser(id: 9999) }`);
     assert.strictEqual(res.body.data.deleteUser, false);
+  });
+});
+
+describe("Authorization", () => {
+  test('Admin can create invites', async () => {
+    const invite = (await queryGraphql("mutation { createInvite }", admin.token)).body.data.createInvite;
+    assert.ok(invite);
+  });
+  test('Non-admin cannot create invites', async () => {
+    const invite = (await queryGraphql("mutation { createInvite }", user1.token)).body.data.createInvite;
+    assert.strictEqual(invite, "false");
+  });
+  test('User cannot delete other users', async () => {
+    const res = await queryGraphql(`mutation DeleteUser { deleteUser(id: ${user2.id}) }`, user1.token);
+    assert.strictEqual(res.body.data.deleteUser, false);
+  });
+  test('User cannot update other users', async () => {
+    const res = await queryGraphql(`mutation UpdateUser { updateUser(id: ${user2.id}, user: {name: "should not work"}) {id, name} }`, user1.token);
+    assert.deepEqual(res.body.data.updateUser, { id: null, name: null });
+  });
+  test('Admin can update and delete other users', async () => {
+    const user = await createUser('user3');
+    const resUpdate = await queryGraphql(`mutation UpdateUser { updateUser(id: ${user.id}, user: {name: "new name"}) {id, name} }`, admin.token);
+    assert.deepEqual(resUpdate.body.data.updateUser, { id: user.id, name: 'new name' });
+    const resDelete = await queryGraphql(`mutation DeleteUser { deleteUser(id: ${user.id}) }`, admin.token);
+    assert.ok(resDelete.body.data.deleteUser);
   });
 });
 

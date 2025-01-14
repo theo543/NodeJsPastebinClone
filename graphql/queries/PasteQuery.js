@@ -13,6 +13,12 @@ const pasteQueryResolver = async (_, { id }) => {
         return null;
     }
 
+    if(paste.privacy_level === 'private' && paste.userId !== context.user_id) {
+        // if the paste is private and the user is not the owner, pretend it doesn't exist
+        // public and unlisted pastes can be viewed by anyone
+        return null;
+    }
+
     await paste.increment('visits', { by: 1 });
 
     return paste;

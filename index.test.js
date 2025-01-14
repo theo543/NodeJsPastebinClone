@@ -2,15 +2,20 @@ import { test, describe, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import http, { createServer } from 'node:http';
 import app from './app.js';
+import db from './models/index.js';
+import createUserService from './core/services/createUserService.js';
 
 let server;
 const PORT = 3001;
 
 // Function to query graphql
-const queryGraphql = (data = null) => {
+const queryGraphql = (data = null, token = null) => {
+    if(data !== null) {
+      data = { query: data };
+    }
     return new Promise((resolve, reject) => {
         const postData = JSON.stringify(data);
-        const options = {
+        let options = {
             method: 'POST',
             hostname: 'localhost',
             port: PORT,
@@ -20,6 +25,9 @@ const queryGraphql = (data = null) => {
                 'Content-Length': Buffer.byteLength(postData),
             },
         };
+        if(token) {
+            options.headers['Authorization'] = `Bearer ${token}`;
+        }
 
         const req = http.request(options, (res) => {
             let body = '';
@@ -29,7 +37,7 @@ const queryGraphql = (data = null) => {
             res.on('end', () => {
                 console.log('test:request:debug', body);
                 res.body = JSON.parse(body || '{}');
-                
+
                 resolve(res);
             });
         });
@@ -46,25 +54,49 @@ const queryGraphql = (data = null) => {
 
 server = createServer(app);
 
+let admin;
+let user1;
+let user2;
+
+async function createUser(name) {
+    const invite = (await queryGraphql("mutation { createInvite }", admin.token)).body.data.createInvite;
+    const user = (await queryGraphql(`mutation { createUser(user: {name: "${name}", password: "${name}"}, inviteToken: "${invite}") { id, name } }`, admin.token)).body.data.createUser;
+    assert.strictEqual(user.name, name);
+    const token = (await queryGraphql(`mutation { login(credentials: {username: "${name}", password: "${name}"}) { token } }`)).body.data.login.token;
+    assert.ok(token);
+    return { id: user.id, name, token };
+}
+
 // Start the server before tests, and stop it after
-before(() => {
+before(async () => {
+    // clear users table to remove any leftovers from previous tests
+    await db.User.destroy({ where: {} });
+
     server.listen(PORT); // Start the server before tests
+    const adminId = (await createUserService('admin', 'admin', true)).id;
+    const adminToken = (await queryGraphql('mutation { login(credentials: {username: "admin", password: "admin"}) { token } }')).body.data.login.token;
+    assert.ok(adminToken);
+    admin = { id: adminId, name: 'admin', token: adminToken };
+    user1 = await createUser('user1');
+    user2 = await createUser('user2');
 });
 
 after(() => {
     server.close(); // Stop the server after all tests
 });
 
-describe('E1 - Find user', () => {
-  test('should find one user', async () => {
-      const res = await queryGraphql({ query: '{ user(id: 1) { id, name } }' });
+describe('Find users', () => {
+  test('should find users', async () => {
+    for (const user of [admin, user1, user2]) {
+        const res = await queryGraphql(`{ user(id: ${user.id}) { id, name } }`);
 
-      assert.strictEqual(res.statusCode, 200);
-      assert.strictEqual(res.body.data.user.name, 'John');
+        assert.strictEqual(res.statusCode, 200);
+        assert.strictEqual(res.body.data.user.name, user.name);
+    }
   });
   test('should return null for user not found', async () => {
-    const res = await queryGraphql({ query: '{ user(id: 999999) { id, name } }' });
-  
+    const res = await queryGraphql('{ user(id: 999999) { id, name } }');
+
     assert.strictEqual(res.statusCode, 200);
     assert.strictEqual(res.body.data.user, null);
   });
@@ -115,7 +147,7 @@ describe('E5 - delete user', () => {
       const res = await queryGraphql({ query: `mutation DeleteUser { deleteUser(id: 1) }` });
 
       assert.strictEqual(res.statusCode, 200);
-      
+
       const resList = await queryGraphql({ query: '{ users {id, name} }' });
       assert.notStrictEqual(resList.body.data.users[0].name, 'Jean');
       assert.notStrictEqual(resList.body.data.users[0].name, 'John');

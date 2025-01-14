@@ -4,6 +4,7 @@ import usersQuery from '../queries/usersQuery.js';
 import postQuery from '../queries/postQuery.js';
 import pasteQuery from '../queries/PasteQuery.js';
 import topLanguagesQuery from '../queries/topLanguagesQuery.js';
+import { popularPastesQuery, longestPastesQuery, authorPastesQuery, allPastesQuery } from '../queries/pasteListQueries.js';
 
 const queryType = new GraphQLObjectType({
     name: "Query",
@@ -13,6 +14,10 @@ const queryType = new GraphQLObjectType({
         post: postQuery,
         paste: pasteQuery,
         topLanguages: topLanguagesQuery,
+        popularPastes: popularPastesQuery,
+        longestPastes: longestPastesQuery,
+        authorPastes: authorPastesQuery,
+        allPastes: allPastesQuery,
     },
 });
 

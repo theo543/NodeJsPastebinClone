@@ -284,6 +284,69 @@ describe("Paste listing and stats", async () => {
       assert.ok(res.body.data.deletePaste);
     }
   });
+
+  test('Author pastes only show pastes of that author', async () => {
+    const user1Paste = await genericPaste(user1.token);
+    const user2Paste = await genericPaste(user2.token);
+    const resUser1 = await queryGraphql(`{ authorPastes(authorId: ${user1.id}) { id } }`, user1.token);
+    assert.ok(resUser1.body.data.authorPastes.find(p => p.id === user1Paste.id));
+    assert.ok(!resUser1.body.data.authorPastes.find(p => p.id === user2Paste.id));
+    const resUser2 = await queryGraphql(`{ authorPastes(authorId: ${user2.id}) { id } }`, user2.token);
+    assert.ok(resUser2.body.data.authorPastes.find(p => p.id === user2Paste.id));
+    assert.ok(!resUser2.body.data.authorPastes.find(p => p.id === user1Paste.id));
+  });
+
+  async function assertReturnsInOrder(query, queryName, expectedOrder, token = null) {
+    const res = await queryGraphql(query, token);
+    let i = 0;
+    let j = 0;
+    while (i < expectedOrder.length) {
+      assert.ok(j < res.body.data[queryName].length);
+      if(res.body.data[queryName][j].id === expectedOrder[i]) {
+        i++;
+      }
+      j++;
+    }
+    assert.strictEqual(i, expectedOrder.length);
+  }
+
+  test('Length query sorts by length', async () => {
+    let expectedOrder = [];
+    for (let i = 5; i >= 0; i -= 1) {
+      const paste = await createPaste('test', 'x'.repeat(i), 'PUBLIC', pasteDate(), textId, user1.token);
+      expectedOrder.push(paste.id);
+    }
+    await assertReturnsInOrder('{ longestPastes { id } }', 'longestPastes', expectedOrder, user1.token);
+  });
+
+  test('Visits query sorts by visits', async () => {
+    let expectedOrder = [];
+    for (let i = 5; i >= 0; i--) {
+      const paste = await genericPaste(user1.token);
+      expectedOrder.push(paste.id);
+      for (let j = 0; j < i; j++) {
+        const res = await queryGraphql(`{ paste(id: ${paste.id}) { id } }`);
+        assert.strictEqual(res.body.data.paste.id, paste.id);
+      }
+    }
+    await assertReturnsInOrder('{ popularPastes { id } }', 'popularPastes', expectedOrder);
+  });
+
+  test('All pastes query returns all pastes', async () => {
+    const expectedSet = new Set();
+    for (let i = 0; i < 10; i++) {
+      const paste = await genericPaste(user1.token);
+      expectedSet.add(paste.id);
+    }
+    const res = await queryGraphql('{ allPastes { id } }', user1.token);
+    const returnedSet = new Set();
+    for (const paste of res.body.data.allPastes) {
+      returnedSet.add(paste.id);
+    }
+    for (const id of expectedSet) {
+      assert.ok(returnedSet.has(id));
+    }
+  });
 });
 
 process.on('unhandledRejection', (reason, promise) => {

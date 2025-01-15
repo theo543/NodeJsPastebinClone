@@ -5,7 +5,7 @@ const listPaste = async (context, target_user_id, sort_kind) => {
         where: {
             [db.Sequelize.Op.or]: [
                 // public pastes can be listed by anyone
-                { privacy_level: 'public' },
+                { privacy_level: 'PUBLIC' },
             ],
         },
     };

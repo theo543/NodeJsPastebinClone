@@ -2,7 +2,7 @@ import {GraphQLInt} from 'graphql';
 import db from '../../models/index.js';
 import pasteType from '../types/pasteType.js';
 
-const pasteQueryResolver = async (_, { id }) => {
+const pasteQueryResolver = async (_, { id }, context) => {
     const paste = await db.Paste.findOne({
         where: {
             id,

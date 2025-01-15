@@ -196,8 +196,12 @@ async function createPaste(name, body, privacy_level, expiration_time, languageI
   return res.body.data.createPaste;
 }
 
+function pasteDate() {
+  return `${Date.now() + 1000 * 60 * 60 * 24 * 7}`;
+}
+
 async function genericPasteWithDate(token) {
-  const date = `${Date.now() + 1000 * 60 * 60 * 24 * 7}`;
+  const date = pasteDate();
   return [date, await createPaste('test paste', 'test body', 'PUBLIC', date, textId, token)];
 }
 
@@ -228,6 +232,57 @@ describe("Paste management", () => {
     assert.ok(goodUpdate.body.data.updatePaste.id);
     const goodDelete = await queryGraphql(`mutation DeletePaste { deletePaste(pasteId: ${paste.id}) }`, admin.token);
     assert.ok(goodDelete.body.data.deletePaste);
+  });
+});
+
+describe("Paste listing and stats", async () => {
+  test('Paste privacy levels', async () => {
+    const list_queries = ['popularPastes', 'longestPastes', 'allPastes', `authorPastes(authorId: ${user1.id})`];
+
+    const public_id = (await createPaste('public', 'public', 'PUBLIC', pasteDate(), textId, user1.token)).id;
+    const private_id = (await createPaste('private', 'private', 'PRIVATE', pasteDate(), textId, user1.token)).id;
+    const unlisted_id = (await createPaste('unlisted', 'unlisted', 'UNLISTED', pasteDate(), textId, user1.token)).id;
+
+    for (const query of list_queries) {
+      // other users should only see public pastes
+      const res = await queryGraphql(`{ ${query} { id } }`, user2.token);
+      let found = false;
+      const queryName = query.replace(/\(.*\)/, '');
+      for (const paste of res.body.data[queryName]) {
+        if(paste.id === public_id) {
+          found = true;
+        }
+        assert.notStrictEqual(paste.id, private_id);
+        assert.notStrictEqual(paste.id, unlisted_id);
+        assert.notStrictEqual(paste.privacy_level, 'PRIVATE');
+        assert.notStrictEqual(paste.privacy_level, 'UNLISTED');
+      }
+      assert.ok(found);
+
+      // owner should see all pastes
+      const resAsOwner = await queryGraphql(`{ ${query} { id } }`, user1.token);
+      for (const paste of [public_id, private_id, unlisted_id]) {
+        assert.ok(resAsOwner.body.data[queryName].find(p => p.id === paste));
+      }
+    }
+
+    for (const paste of [public_id, unlisted_id]) {
+      // public and unlisted pastes should be visible to anyone
+      const res = await queryGraphql(`{ paste(id: ${paste}) { id } }`, user2.token);
+      assert.ok(res.body.data.paste);
+      assert.strictEqual(res.body.data.paste.id, paste);
+    }
+
+    // private pastes should only be visible to owner
+    const resPrivate = await queryGraphql(`{ paste(id: ${private_id}) { id } }`, user2.token);
+    assert.strictEqual(resPrivate.body.data.paste, null);
+    const resPrivateAsOwner = await queryGraphql(`{ paste(id: ${private_id}) { id } }`, user1.token);
+    assert.ok(resPrivateAsOwner.body.data.paste);
+
+    for (const paste of [public_id, private_id, unlisted_id]) {
+      const res = await queryGraphql(`mutation DeletePaste { deletePaste(pasteId: ${paste}) }`, user1.token);
+      assert.ok(res.body.data.deletePaste);
+    }
   });
 });
 

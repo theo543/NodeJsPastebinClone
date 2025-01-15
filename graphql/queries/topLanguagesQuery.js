@@ -13,14 +13,14 @@ const topLanguagesQueryResolver = async (_) => {
         },
         group: ['Paste.languageId'],
         attributes: [
-            'languageId',
-            [db.sequelize.fn('COUNT', 'Paste.languageId'), 'count'],
+            [db.sequelize.col('Language.id'), 'id'],
+            [db.sequelize.col('Language.name'), 'name'],
         ],
         order: [
             [db.sequelize.fn('COUNT', 'Paste.languageId'), 'DESC'],
         ],
     });
-    return pasteLanguages;        
+    return pasteLanguages;
 };
 
 const topLanguagesQuery = {

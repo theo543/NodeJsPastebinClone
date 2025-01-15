@@ -2,7 +2,13 @@ import privacyLevelEnum from '../../graphql/enums/privacyLevelEnum.js';
 import db from '../../models/index.js';
 
 export const createPaste = async (paste, context) => {
-    const expiration_time = new Date(parseInt(paste.expiration_time));
+    let dateString;
+    if(paste.expiration_time.match(/^\d+$/)) {
+        dateString = parseInt(paste.expiration_time);
+    } else {
+        dateString = paste.expiration_time;
+    }
+    const expiration_time = new Date(dateString);
     const createdPaste = await db.Paste.create({
         name: paste.name,
         body: paste.body,

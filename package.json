@@ -7,12 +7,13 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "test": "node --test"
+    "test": "cross-env NODE_ENV=test node test_init.js && cross-env NODE_ENV=test node --test"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "bcrypt": "^5.1.1",
+    "cross-env": "^7.0.3",
     "express": "^4.21.1",
     "graphql": "^16.9.0",
     "graphql-http": "^1.22.2",

@@ -5,6 +5,8 @@ import app from './app.js';
 import db from './models/index.js';
 import createUserService from './core/services/createUserService.js';
 
+assert.strictEqual(process.env.NODE_ENV, 'test'); // prevent normal db from being overwritten
+
 let server;
 const PORT = 3001;
 

@@ -59,6 +59,7 @@ let user1;
 let user2;
 let textId;
 let jsId;
+let testLangIds = [];
 
 async function createUser(name) {
     const invite = (await queryGraphql("mutation { createInvite }", admin.token)).body.data.createInvite;
@@ -80,7 +81,12 @@ before(async () => {
     textId = (await db.Language.create({ name: 'Text' })).id;
     jsId = (await db.Language.create({ name: 'JavaScript' })).id;
 
+    for (let i = 0; i < 5; i++) {
+      testLangIds.push((await db.Language.create({ name: `Lang${i}` })).id);
+    }
+
     server.listen(PORT); // Start the server before tests
+
     const adminId = (await createUserService('admin', 'admin', true)).id;
     const adminToken = (await queryGraphql('mutation { login(credentials: {username: "admin", password: "admin"}) { token } }')).body.data.login.token;
     assert.ok(adminToken);
@@ -346,6 +352,16 @@ describe("Paste listing and stats", async () => {
     for (const id of expectedSet) {
       assert.ok(returnedSet.has(id));
     }
+  });
+
+  test('Top languages query returns languages in order', async () => {
+    for (let i = 0; i < 5; i++) {
+      const langPastes = 10 - i;
+      for (let j = 0; j < langPastes; j++) {
+        await createPaste('test', 'test', 'PUBLIC', pasteDate(), testLangIds[i], user1.token);
+      }
+    }
+    await assertReturnsInOrder('{ topLanguages { id } }', 'topLanguages', testLangIds);
   });
 });
 

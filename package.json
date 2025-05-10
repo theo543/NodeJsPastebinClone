@@ -21,8 +21,8 @@
     "jsonwebtoken": "^9.0.2",
     "sequelize": "^6.37.5",
     "sqlite3": "^5.1.7",
-    "superagent": "^8.1.2",
-    "supertest": "^6.3.3"
+    "superagent": "^10.2.0",
+    "supertest": "^6.3.4"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.3.0",
